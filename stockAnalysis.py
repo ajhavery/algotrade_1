@@ -1,19 +1,20 @@
+# import fix_yahoo_finance as yf
+# df = yf.download(symbol, start_date, end_date)
+
 from pandas_datareader import data as pdr
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import pandas as pd
 import numpy as np
+import fix_yahoo_finance as yf
 import seaborn as sns
 plt.rcParams.update({'font.size': 7})
 
-import fix_yahoo_finance as yf
-yf.pdr_override()
-
 symbol = ['^NSEI', '^BSESN', 'SBIN.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS', 'MARUTI.NS']
-start_date = '2014-01-01'
+start_date = '2009-01-01'
 end_date = '2019-01-23'
+yf.pdr_override()
 df = pdr.get_data_yahoo(symbol, start_date, end_date, group_by = 'ticker', auto_adjust = True, thread = 5)
-#below can also be used
-#df = yf.download(symbol, start="2017-01-01", end="2017-04-30")
 
 df.to_csv('NSE.csv')
 df.head(5)
@@ -37,61 +38,40 @@ close = close.fillna(method='bfill')
 close.head(5)
 close.describe()
 
-#getting close price data
-nse = close.loc[idx[:],idx['^NSEI', :]]
-bse = close.loc[idx[:],idx['^BSESN', :]]
-sbi = close.loc[idx[:],idx['SBIN.NS', :]]
-hdfc = close.loc[idx[:],idx['HDFCBANK.NS', :]]
-icici = close.loc[idx[:],idx['ICICIBANK.NS', :]]
-tatamotors = close.loc[idx[:],idx['TATAMOTORS.NS', :]]
-maruti = close.loc[idx[:],idx['MARUTI.NS', :]]
+short_rolling = close.rolling(window=20).mean()
+long_rolling = close.rolling(window=100).mean()
+short_rolling.head(20)
+long_rolling.head(100)
 
-# Calculate the 20 and 100 days moving averages of the closing prices
-short_rolling_nse = nse.rolling(window=20).mean()
-long_rolling_nse = nse.rolling(window=100).mean()
-short_rolling_bse = bse.rolling(window=20).mean()
-long_rolling_bse = bse.rolling(window=100).mean()
-short_rolling_sbi = sbi.rolling(window=20).mean()
-long_rolling_sbi = sbi.rolling(window=100).mean()
-short_rolling_hdfc = hdfc.rolling(window=20).mean()
-long_rolling_hdfc = hdfc.rolling(window=100).mean()
-short_rolling_icici = icici.rolling(window=20).mean()
-long_rolling_icici = icici.rolling(window=100).mean()
-short_rolling_tata = tatamotors.rolling(window=20).mean()
-long_rolling_tata = tatamotors.rolling(window=100).mean()
-short_rolling_maruti = maruti.rolling(window=20).mean()
-long_rolling_maruti = maruti.rolling(window=100).mean()
+# start_date = '2009-01-01'
+# end_date = '2019-01-23'
+plot_start_date = '2018-01-01'
+plot_end_date = '2019-01-20'
 
-# Plot everything by leveraging the very powerful matplotlib package
 fig, ax = plt.subplots(figsize=(16,9))
-ax.plot(nse.index, nse, label='NSE')
-ax.plot(short_rolling_nse.index, short_rolling_nse, label='20 days rolling')
-ax.plot(long_rolling_nse.index, long_rolling_nse, label='100 days rolling')
+ticker = '^NSEI'
+# ticker = ['^NSEI', 'SBIN.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS', 'MARUTI.NS']
+# new_close = close.loc[plot_start_date:plot_end_date, ticker]
+# for c in new_close:
+#     ax.plot(new_close.index, new_close[c], label=str(c[0]))
 
-ax.set_xlabel('Date')
-ax.set_ylabel('Adjusted closing price')
-ax.legend()
+ax.plot(close.loc[plot_start_date:plot_end_date, :].index, close.loc[plot_start_date:plot_end_date, ticker], label='Price')
+ax.plot(long_rolling.loc[plot_start_date:plot_end_date, :].index, long_rolling.loc[plot_start_date:plot_end_date, ticker], label = '100-days SMA')
+ax.plot(short_rolling.loc[plot_start_date:plot_end_date, :].index, short_rolling.loc[plot_start_date:plot_end_date, ticker], label = '20-days SMA')
 
-fig, by = plt.subplots(figsize=(16,9))
-by.plot(bse.index, bse, label='BSE')
-by.plot(short_rolling_bse.index, short_rolling_bse, label='20 days rolling')
-by.plot(long_rolling_bse.index, long_rolling_bse, label='100 days rolling')
-
-by.set_xlabel('Date')
-by.set_ylabel('Adjusted closing price')
-by.legend()
+ax.legend(loc='best')
+ax.set_ylabel('Price in ₹')
+# y = 2 digit year; Y = 4 digit year
+my_year_month_fmt = mdates.DateFormatter('%m-%y')
+ax.xaxis.set_major_formatter(my_year_month_fmt)
 
 # normal returns = p(t)/p(t-1)
 returns = close.pct_change(1)
-returns.head()
-
 # Log returns - First the logarithm of the prices is taken and the the difference of consecutive (log) observations
 log_returns = np.log(close).diff()
-log_returns.describe()
 
 # plotting returns
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16,12))
-
 for c in log_returns:
     ax1.plot(log_returns.index, log_returns[c].cumsum(), label=str(c[0]))
 ax1.set_ylabel('Cumulative log returns')
@@ -104,32 +84,23 @@ ax2.legend(loc='best')
 
 plt.show()
 
-#Making buy sell decision
-#Making last day returns a column vector
-
-log_returns.head(5)
-weights_matrix = pd.DataFrame(1 / 3, index=close.index, columns=close.columns)
-weights_matrix.describe()
-weights_matrix.head(5)
-# Calculating portfolio return
-# Initially the two matrices are multiplied. Note that we are only interested in the diagonal,
-# which is where the dates in the row-index and the column-index match.
-temp_var = weights_matrix.dot(log_returns.transpose())
-temp_var.head().iloc[:, 0:5]
-temp_var.describe()
-temp_var
-
+# Calculating portfolio return. log_returns and weight matrix are multiplied.
+# Then diagonal is chosen where the dates in the row-index and the column-index match.
 # The numpy np.diag function is used to extract the diagonal and then
 # a Series is constructed using the time information from the log_returns index
-portfolio_log_returns = pd.Series(np.diag(temp_var), index=log_returns.index)
 # The below will also work. A dataframe is a collection of series
 # portfolio_log_returns = pd.DataFrame(np.diag(temp_var), index=log_returns.index)
+weights_matrix = pd.DataFrame(1 / 3, index=close.index, columns=close.columns)
+weights_matrix.head(5)
+temp_var = weights_matrix.dot(log_returns.transpose())
+temp_var.head().iloc[:, 0:5] # view all rows and 5 columns
+portfolio_log_returns = pd.Series(np.diag(temp_var), index=log_returns.index)
 portfolio_log_returns.tail()
 
 # Sum of all log returns gives the portfolio log return over the period
 # log_return = log (p_t/p_0)
 # p_t/p_0 = e ^ log_return
-# % return = (p_t - p_0)/p_0 = e ^ log_return - 1
+# % return = (p_t - p_0)/p_0 = e ^ Summation(log_return) - 1
 total_relative_returns = (np.exp(portfolio_log_returns.cumsum()) - 1)
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16,12))
