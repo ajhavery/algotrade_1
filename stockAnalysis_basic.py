@@ -1,3 +1,4 @@
+# This file includes basic data download from yahoo finance, calculating rolling averages and returns
 # import fix_yahoo_finance as yf
 # df = yf.download(symbol, start_date, end_date)
 

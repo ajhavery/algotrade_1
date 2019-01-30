@@ -1,3 +1,4 @@
+# this file is also basic usage of averages and returns with advances plotting
 # import fix_yahoo_finance as yf
 # df = yf.download(symbol, start_date, end_date)
 
