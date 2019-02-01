@@ -64,13 +64,6 @@ short_rolling_maruti = maruti.rolling(window=20).mean()
 long_rolling_maruti = maruti.rolling(window=100).mean()
 
 # Plot everything by leveraging the very powerful matplotlib package
-
-
-
-
-
-
-
 fig, ax = plt.subplots(figsize=(16,9))
 ax.plot(nse.index, nse, label='NSE')
 ax.plot(short_rolling_nse.index, short_rolling_nse, label='20 days rolling')
