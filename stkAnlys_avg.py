@@ -52,7 +52,7 @@ trading_positions_raw = close - ema_short
 trading_positions_raw.to_csv('trading_position.csv')
 trading_positions_raw.tail()
 # Taking the sign of the difference to determine whether the price or the EMA is greater and then multiplying by 1/3
-trading_positions = trading_positions_raw.apply(np.sign) * 1/3
+trading_positions = trading_positions_raw.apply(np.sign) * 1/7
 trading_positions.head()
 # To evaluate today's strategy, we need to look at previous day closing prices
 # Action on t+1 will be driven by pricing data of t
@@ -135,3 +135,43 @@ ax.plot(cum_relative_return_approx.index, 100*cum_relative_return_approx, label=
 ax.set_ylabel('Total cumulative relative returns (%)')
 ax.legend(loc='best')
 ax.xaxis.set_major_formatter(my_year_month_fmt)
+
+# Comparison between buy and hold strategy vs EMA strategy
+# Define the weights matrix for the simple buy-and-hold strategy
+simple_weights_matrix = pd.DataFrame(1/7, index = close.index, columns=close.columns)
+
+# Get the buy-and-hold strategy log returns per asset
+simple_strategy_asset_log_returns = simple_weights_matrix * asset_log_returns
+
+# Get the cumulative log-returns per asset
+simple_cum_strategy_asset_log_returns = simple_strategy_asset_log_returns.cumsum()
+
+# Transform the cumulative log returns to relative returns
+simple_cum_strategy_asset_relative_returns = np.exp(simple_cum_strategy_asset_log_returns) - 1
+
+# Total strategy relative returns. This is the exact calculation.
+simple_cum_relative_return_exact = simple_cum_strategy_asset_relative_returns.sum(axis=1)
+
+def print_portfolio_yearly_statistics(portfolio_cumulative_relative_returns, days_per_year = 52 * 5):
+
+    total_days_in_simulation = portfolio_cumulative_relative_returns.shape[0]
+    number_of_years = total_days_in_simulation / days_per_year
+
+    # The last data point will give us the total portfolio return
+    total_portfolio_return = portfolio_cumulative_relative_returns[-1]
+    # Average portfolio return assuming compunding of returns
+    average_yearly_return = (1 + total_portfolio_return)**(1/number_of_years) - 1
+
+    print('Total portfolio return is: ' + '{:5.2f}'.format(100*total_portfolio_return) + '%')
+    print('Average yearly return is: ' + '{:5.2f}'.format(100*average_yearly_return) + '%')
+
+fig, ax = plt.subplots(figsize=(16,9))
+
+ax.plot(cum_relative_return_exact.index, 100*cum_relative_return_exact, label='EMA strategy')
+ax.plot(simple_cum_relative_return_exact.index, 100*simple_cum_relative_return_exact, label='Buy and hold')
+
+ax.set_ylabel('Total cumulative relative returns (%)')
+ax.legend(loc='best')
+ax.xaxis.set_major_formatter(my_year_month_fmt)
+
+print_portfolio_yearly_statistics(simple_cum_relative_return_exact)
